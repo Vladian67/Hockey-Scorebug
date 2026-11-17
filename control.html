@@ -1,0 +1,179 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hockey Bug Control</title>
+<style>
+:root { --bg:#0e1118; --panel:#161b26; --panel2:#1d2433; --line:#2a3447; --txt:#e8ecf4; --mut:#8b97ad; --acc:#d70e0f; --green:#1f9d55; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.35 system-ui,'Segoe UI',Roboto,sans-serif; }
+header { display:flex; align-items:center; gap:14px; padding:12px 18px; border-bottom:1px solid var(--line); background:var(--panel); position:sticky; top:0; z-index:5; }
+header h1 { margin:0; font-size:15px; letter-spacing:3px; } header .st { margin-left:auto; font-size:12px; color:var(--mut); } .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#c0392b; margin-right:6px; } .dot.ok { background:var(--green); }
+main { padding:16px; display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); max-width:1400px; margin:0 auto; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; }
+.card h2 { margin:0 0 10px; font-size:12px; letter-spacing:2px; color:var(--mut); text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+.sw { width:12px; height:12px; border-radius:3px; background:var(--tc,#555); }
+button, select, input[type=text], input[type=number] { font:inherit; color:var(--txt); background:var(--panel2); border:1px solid var(--line); border-radius:7px; padding:8px 10px; }
+button { font-weight:700; cursor:pointer; transition:.12s; } button:hover { border-color:#3a4660; } button:active { transform:scale(.97); }
+button.on { background:var(--acc); border-color:var(--acc); } button.go { background:var(--green); border-color:var(--green); } button.stop { background:#b3261e; border-color:#b3261e; }
+button.goal { background:var(--acc); border-color:var(--acc); font-size:16px; }
+input[type=text], input[type=number], select { width:100%; } input[type=color] { width:100%; height:36px; padding:2px; background:var(--panel2); border:1px solid var(--line); border-radius:7px; }
+label.f { display:block; font-size:11px; letter-spacing:1px; color:var(--mut); margin:8px 0 3px; text-transform:uppercase; }
+.grid { display:grid; gap:7px; } .g2 { grid-template-columns:1fr 1fr; } .g3 { grid-template-columns:repeat(3,1fr); } .g4 { grid-template-columns:repeat(4,1fr); }
+.flex { display:flex; gap:7px; align-items:center; }
+.big { font-size:54px; font-weight:900; text-align:center; line-height:1; margin:4px 0 10px; font-variant-numeric:tabular-nums; }
+.clockbig { font-size:60px; }
+.list > div { display:flex; align-items:center; gap:8px; padding:6px 8px; background:var(--panel2); border-radius:7px; margin-top:6px; } .list b { flex:1; } .list .t { font-variant-numeric:tabular-nums; color:var(--mut); }
+.chk { display:flex; align-items:center; gap:8px; margin:6px 0; } .upl { cursor:pointer; padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:var(--panel2); font-weight:700; }
+small.h { color:var(--mut); }
+</style></head>
+<body>
+<header><h1>HOCKEY BUG</h1><button id="vis"></button><span class="st"><span class="dot" id="dot"></span><span id="stt">connecting…</span></span></header>
+<main>
+  <section class="card" id="clockcard">
+    <h2>Clock &amp; period</h2>
+    <div class="big clockbig" id="clk">20:00</div>
+    <div class="grid g3"><button class="go" data-clock="start">Start</button><button class="stop" data-clock="stop">Stop</button><button data-clock="toggle">Toggle</button></div>
+    <div class="grid g4" style="margin-top:7px"><button data-adj="-10000">−10s</button><button data-adj="-1000">−1s</button><button data-adj="1000">+1s</button><button data-adj="10000">+10s</button></div>
+    <label class="f">Set clock (mm:ss)</label>
+    <div class="flex"><input type="text" id="setc" placeholder="20:00"><button id="setcb">Set</button></div>
+    <label class="f">Period (resets clock)</label>
+    <div class="grid g4" id="pbtns"></div>
+  </section>
+  <div id="teams" style="display:contents"></div>
+  <section class="card">
+    <h2>Penalties</h2>
+    <div class="grid g2"><div><label class="f">Team</label><select id="pt"><option value="away">Away</option><option value="home">Home</option></select></div>
+      <div><label class="f">Player</label><input type="text" id="pp" placeholder="#17 Smith"></div></div>
+    <div class="grid g4" style="margin-top:8px"><button data-pen="2">2:00</button><button data-pen="4">4:00</button><button data-pen="5">5:00</button><button data-pen="10">10:00</button></div>
+    <div class="list" id="plist"></div>
+    <button id="pclear" style="margin-top:8px">Clear all</button>
+    <small class="h"><br>A power-play tab appears under the team with the advantage and counts down on its own.</small>
+  </section>
+  <section class="card" id="pdcard">
+    <h2>Popdown</h2>
+    <label class="f">Color</label><select id="pdc"><option value="">Default (dark)</option><option value="away">Away team color</option><option value="home">Home team color</option></select>
+    <label class="f">Heading (optional)</label><input type="text" id="pdt" placeholder="LAST 5 GAMES">
+    <label class="f">Lines</label>
+    <input type="text" class="pdl" placeholder="Line 1"><input type="text" class="pdl" placeholder="Line 2" style="margin-top:6px"><input type="text" class="pdl" placeholder="Line 3" style="margin-top:6px">
+    <div class="grid g2" style="margin-top:10px"><button id="pdshow" class="go">Show / update</button><button id="pdhide" class="stop">Hide</button></div>
+    <small class="h"><br>Drops down under the bug (and under the goal banner). Edit text and press Show / update to change it live.</small>
+  </section>
+  <section class="card" id="lwcard">
+    <h2>Lower third</h2>
+    <div class="grid g2"><div><label class="f">Team</label><select id="lwt"><option value="away">Away</option><option value="home">Home</option></select></div>
+      <div><label class="f">Name (blank = team name)</label><input type="text" id="lwh" placeholder="MAPLE LEAFS"></div></div>
+    <div class="grid g2" style="margin-top:6px"><input type="text" class="lwl" placeholder="Label (POWER PLAY)"><input type="text" class="lwv" placeholder="Value (1 FOR 3)"></div>
+    <div class="grid g2" style="margin-top:6px"><input type="text" class="lwl" placeholder="Label (PENALTY KILL)"><input type="text" class="lwv" placeholder="Value"></div>
+    <div class="grid g2" style="margin-top:6px"><input type="text" class="lwl" placeholder="Label (SHOTS)"><input type="text" class="lwv" placeholder="Value"></div>
+    <div class="grid g2" style="margin-top:10px"><button id="lwshow" class="go">Show / update</button><button id="lwhide" class="stop">Hide</button></div>
+    <small class="h"><br>Bottom-left corner. Leave a row blank to skip it.</small>
+  </section>
+  <section class="card">
+    <h2>Settings</h2>
+    <label class="chk"><input type="checkbox" data-set="showSog"> Show shots-on-goal tab</label>
+    <label class="chk"><input type="checkbox" data-set="tenths"> Tenths of a second under 1:00</label>
+    <label class="chk"><input type="checkbox" data-set="goalAnim"> Goal animation</label>
+    <label class="chk"><input type="checkbox" data-set="stopOnGoal"> Stop clock on goal</label>
+    <label class="chk"><input type="checkbox" data-set="cancelMinor"> Goal ends opponent's minor penalty on power play</label>
+    <div class="grid g3"><div><label class="f">Period min</label><input type="number" data-setn="periodMin"></div><div><label class="f">OT min</label><input type="number" data-setn="otMin"></div><div><label class="f">Intermission min</label><input type="number" data-setn="intMin"></div></div>
+    <label class="f">Clock accent color</label><input type="color" id="accent">
+  </section>
+</main>
+<script>
+const NHL = [['ANA','ANAHEIM DUCKS','#F47A38','#000000'],['BOS','BOSTON BRUINS','#000000','#FFB81C'],['BUF','BUFFALO SABRES','#003087','#FFB81C'],['CGY','CALGARY FLAMES','#C8102E','#F1BE48'],['CAR','CAROLINA HURRICANES','#CC0000','#000000'],['CHI','CHICAGO BLACKHAWKS','#CF0A2C','#000000'],['COL','COLORADO AVALANCHE','#6F263D','#236192'],['CBJ','COLUMBUS BLUE JACKETS','#002654','#CE1126'],['DAL','DALLAS STARS','#006847','#8F8F8C'],['DET','DETROIT RED WINGS','#CE1126','#FFFFFF'],['EDM','EDMONTON OILERS','#041E42','#FF4C00'],['FLA','FLORIDA PANTHERS','#041E42','#C8102E'],['LA','LOS ANGELES KINGS','#111111','#A2AAAD'],['MIN','MINNESOTA WILD','#154734','#A6192E'],['MTL','MONTREAL CANADIENS','#AF1E2D','#192168'],['NSH','NASHVILLE PREDATORS','#041E42','#FFB81C'],['NJ','NEW JERSEY DEVILS','#CE1126','#000000'],['NYI','NEW YORK ISLANDERS','#00539B','#F47D30'],['NYR','NEW YORK RANGERS','#0038A8','#CE1126'],['OTT','OTTAWA SENATORS','#C52032','#C69214'],['PHI','PHILADELPHIA FLYERS','#F74902','#000000'],['PIT','PITTSBURGH PENGUINS','#000000','#FCB514'],['SJ','SAN JOSE SHARKS','#006D75','#EA7200'],['SEA','SEATTLE KRAKEN','#001628','#99D9D9'],['STL','ST. LOUIS BLUES','#002F87','#FCB514'],['TB','TAMPA BAY LIGHTNING','#002868','#FFFFFF'],['TOR','TORONTO MAPLE LEAFS','#00205B','#FFFFFF'],['UTA','UTAH MAMMOTH','#010101','#6CACE4'],['VAN','VANCOUVER CANUCKS','#00205B','#00843D'],['VGK','VEGAS GOLDEN KNIGHTS','#333F42','#B4975A'],['WSH','WASHINGTON CAPITALS','#041E42','#C8102E'],['WPG','WINNIPEG JETS','#041E42','#004C97']];
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const BASE = location.protocol === 'file:' ? 'http://localhost:3100' : '';
+const api = (u, b) => fetch(BASE + u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) }).catch(() => {});
+const patch = o => api('/api/state', o);
+let S = null, offset = 0;
+
+const teamCard = (t, label) => `<section class="card team" data-team="${t}"><h2><span class="sw"></span>${label}</h2>
+  <select data-nhl="${t}"><option value="">Select NHL team…</option>${NHL.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
+  <div class="big" data-score="${t}">0</div>
+  <div class="grid g3"><button class="goal" data-goal="${t}">GOAL</button><button data-score-d="${t}" data-d="1">+1</button><button data-score-d="${t}" data-d="-1">−1</button></div>
+  <div class="grid g2"><div><label class="f">Scorer</label><input type="text" data-scorer="${t}" placeholder="#17 Smith"></div><div><label class="f">Assists</label><input type="text" data-assists="${t}" placeholder="#8 Jones, #4 Lee"></div></div>
+  <label class="f">Shots on goal: <b data-sogv="${t}">0</b></label>
+  <div class="grid g3"><button data-sog="${t}" data-d="1">+1</button><button data-sog="${t}" data-d="-1">−1</button><button data-sog="${t}" data-d="0" data-reset>Reset</button></div>
+  <div class="grid g2"><div><label class="f">Abbr</label><input type="text" maxlength="4" data-bind="${t}.abbr"></div><div><label class="f">Name</label><input type="text" data-bind="${t}.name"></div>
+  <div><label class="f">Main color</label><input type="color" data-bind="${t}.color"></div><div><label class="f">Accent</label><input type="color" data-bind="${t}.color2"></div></div>
+  <label class="f">Logo (URL or upload)</label>
+  <div class="flex"><input type="text" data-bind="${t}.logo" placeholder="https://… or upload →" style="flex:1;min-width:0"><label class="upl">Upload<input type="file" accept="image/*" data-logo="${t}" hidden></label><button data-logoclear="${t}">Clear</button></div></section>`;
+$('#teams').innerHTML = teamCard('away', 'Away') + teamCard('home', 'Home');
+const PERIODS = ['1ST', '2ND', '3RD', 'OT', '2OT', 'SO', 'FINAL', '1ST INT', '2ND INT', '3RD INT'];
+$('#pbtns').innerHTML = PERIODS.map(p => `<button data-period="${p}">${p}</button>`).join('');
+
+const fmt = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const clockMs = () => !S ? 0 : S.clock.running ? Math.max(0, S.clock.ms - (Date.now() + offset - S.clock.at)) : S.clock.ms;
+
+function setPath(o, path, v) { const k = path.split('.'); let t = o; k.slice(0, -1).forEach(x => t = t[x] = t[x] || {}); t[k.pop()] = v; return o; }
+function getPath(o, path) { return path.split('.').reduce((a, k) => a && a[k], o); }
+
+function render() {
+  if (!S) return;
+  $('#vis').textContent = S.visible ? 'Hide bug' : 'Show bug'; $('#vis').className = S.visible ? 'stop' : 'go';
+  for (const t of ['away', 'home']) {
+    const card = $(`.team[data-team="${t}"]`); card.style.setProperty('--tc', S[t].color);
+    $(`[data-score="${t}"]`).textContent = S[t].score; $(`[data-sogv="${t}"]`).textContent = S[t].sog;
+    $(`select[data-nhl="${t}"]`).value = NHL.some(n => n[0] === S[t].abbr) ? S[t].abbr : '';
+  }
+  $$('[data-bind]').forEach(el => { if (document.activeElement !== el) { const v = getPath(S, el.dataset.bind); el.value = v == null ? '' : (el.type === 'color' ? String(v).toLowerCase() : v); } });
+  $$('[data-period]').forEach(b => b.classList.toggle('on', b.dataset.period === S.period));
+  $$('[data-set]').forEach(c => c.checked = !!S.settings[c.dataset.set]);
+  $$('[data-setn]').forEach(i => { if (document.activeElement !== i) i.value = S.settings[i.dataset.setn]; });
+  if (document.activeElement !== $('#accent')) $('#accent').value = (S.theme.accent || '#d70e0f').toLowerCase();
+  renderPen();
+}
+function renderPen() {
+  if (!S) return; const secs = clockMs() / 1000;
+  const act = S.penalties.filter(p => secs - p.end > 0);
+  $('#plist').innerHTML = act.length ? act.map(p => `<div><b>${S[p.team].abbr} ${p.player || ''} <small class="h">${p.minutes}:00</small></b><span class="t">${fmt((secs - p.end) * 1000)}</span><button data-prem="${p.id}">✕</button></div>`).join('') : '<small class="h">No active penalties</small>';
+}
+setInterval(() => { if (S) { $('#clk').textContent = fmt(clockMs()); renderPen(); } }, 200);
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+  if (b.id === 'vis') patch({ visible: !S.visible });
+  else if (d.clock) api('/api/clock', { action: d.clock });
+  else if (d.adj) api('/api/clock', { action: 'adjust', delta: Number(d.adj) });
+  else if (b.id === 'setcb') { const m = $('#setc').value.trim().match(/^(\d+):(\d{1,2})(?:\.(\d))?$/) || $('#setc').value.trim().match(/^(\d+)()()$/); if (m) api('/api/clock', { action: 'set', ms: ((+m[1]) * (m[2] !== '' && m[2] != null ? 60 : 1) + (m[2] ? +m[2] : 0)) * 1000 }); }
+  else if (d.period) api('/api/period', { value: d.period });
+  else if (d.goal) { api('/api/goal', { team: d.goal, scorer: $(`[data-scorer="${d.goal}"]`).value, assists: $(`[data-assists="${d.goal}"]`).value }); $(`[data-scorer="${d.goal}"]`).value = ''; $(`[data-assists="${d.goal}"]`).value = ''; }
+  else if (d.scoreD) api('/api/score', { team: d.scoreD, delta: Number(d.d) });
+  else if (d.sog) { if ('reset' in d) patch({ [d.sog]: { sog: 0 } }); else api('/api/sog', { team: d.sog, delta: Number(d.d) }); }
+  else if (d.logoclear) patch({ [d.logoclear]: { logo: '' } });
+  else if (d.pen) api('/api/penalty', { action: 'add', team: $('#pt').value, player: $('#pp').value, minutes: Number(d.pen) });
+  else if (d.prem) api('/api/penalty', { action: 'remove', id: Number(d.prem) });
+  else if (b.id === 'pclear') api('/api/penalty', { action: 'clear' });
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.bind) patch(setPath({}, el.dataset.bind, el.value));
+  else if (el.dataset.nhl) { const x = NHL.find(n => n[0] === el.value); if (x) patch({ [el.dataset.nhl]: { abbr: x[0], name: x[1], color: x[2], color2: x[3], logo: '' } }); }
+  else if (el.dataset.set) patch({ settings: { [el.dataset.set]: el.checked } });
+  else if (el.dataset.setn) patch({ settings: { [el.dataset.setn]: Number(el.value) || 0 } });
+  else if (el.id === 'accent') patch({ theme: { accent: el.value } });
+  else if (el.dataset.logo) {
+    const f = el.files[0]; if (!f) return; const img = new Image(), r = new FileReader();
+    r.onload = () => { img.onload = () => { const k = Math.min(1, 320 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); patch({ [el.dataset.logo]: { logo: c.toDataURL('image/png') } }); }; img.src = r.result; };
+    r.readAsDataURL(f); el.value = '';
+  }
+});
+const es = new EventSource(BASE + '/events');
+es.onopen = () => { $('#dot').className = 'dot ok'; $('#stt').textContent = 'connected'; };
+es.onerror = () => { $('#dot').className = 'dot'; $('#stt').textContent = 'reconnecting…'; };
+es.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'state') { offset = m.now - Date.now(); S = m.state; render(); } };
+
+let extrasFilled = false;
+function fillExtras() {
+  if (extrasFilled || !S || !S.popdown) return; extrasFilled = true;
+  $('#pdt').value = S.popdown.title || ''; $('#pdc').value = S.popdown.team || ''; $$('.pdl').forEach((i, n) => i.value = (S.popdown.lines || [])[n] || '');
+  const l = S.lower; $('#lwt').value = l.team; $('#lwh').value = l.title || '';
+  $$('.lwl').forEach((i, n) => i.value = (l.stats[n] || {}).l || ''); $$('.lwv').forEach((i, n) => i.value = (l.stats[n] || {}).v || '');
+}
+const sendPop = vis => patch({ popdown: { visible: vis, team: $('#pdc').value, title: $('#pdt').value, lines: $$('.pdl').map(i => i.value) } });
+const sendLow = vis => patch({ lower: { visible: vis, team: $('#lwt').value, title: $('#lwh').value, stats: $$('.lwl').map((i, n) => ({ l: i.value, v: $$('.lwv')[n].value })) } });
+document.addEventListener('click', e => {
+  const id = e.target.id;
+  if (id === 'pdshow') sendPop(true); else if (id === 'pdhide') api('/api/popdown', { action: 'hide' });
+  else if (id === 'lwshow') sendLow(true); else if (id === 'lwhide') api('/api/lower', { action: 'hide' });
+});
+setInterval(() => { if (S) { fillExtras(); $('#pdshow').textContent = S.popdown && S.popdown.visible ? 'Update popdown' : 'Show popdown'; $('#lwshow').textContent = S.lower && S.lower.visible ? 'Update lower third' : 'Show lower third'; } }, 300);
+</script></body></html>
